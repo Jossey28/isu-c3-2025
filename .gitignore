@@ -11,11 +11,6 @@ Thumbs.db
 
 Ignore environment variables & secrets
 
-This is critical! Never commit API keys or passwords.
-
-.env
-*.env
-
 Ignore general log files
 
 *.log
