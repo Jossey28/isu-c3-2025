@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/joho/godotenv/autoload"
 )
 
-const API_KEY_FLAG = "supersecret123"
+const API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
 
 type WeatherEntry struct {
 	ID          int    `json:"id"`
