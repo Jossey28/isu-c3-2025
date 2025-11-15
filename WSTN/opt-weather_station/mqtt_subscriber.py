@@ -9,11 +9,11 @@ import requests
 MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
 #Change this to match your team number
-MQTT_TOPIC = "TEAM_XXX/weather_data"
+MQTT_TOPIC = "TEAM_2/weather_data"
 #Change this to the address of your WWW box
-POST_URL = "http://www.teamXXX.isucdc.com:8080/weather"
+POST_URL = "http://www.team2.isucdc.com:8080/weather"
 #Change this to the address of your NEWS box
-API_URL = "http://news.teamXXX.isucdc.com:8080/weather"
+API_URL = "http://news.team2.isucdc.com:8080/weather"
 
 def on_message(client, userdata, msg):
     print(f"Received message on topic {msg.topic}")
