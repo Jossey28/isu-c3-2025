@@ -1,0 +1,112 @@
+===================================================================
+
+General
+
+===================================================================
+
+Ignore Operating System generated files
+
+.DS_Store
+Thumbs.db
+
+Ignore environment variables & secrets
+
+This is critical! Never commit API keys or passwords.
+
+.env
+*.env
+
+Ignore general log files
+
+*.log
+
+===================================================================
+
+Java / Spring Boot
+
+===================================================================
+
+Since /news-source/ contains the decompiled source
+
+for this project, we are intentionally not ignoring it.
+
+If this were a standard Java project with original source,
+
+we would ignore build/ and target/ directories, e.g.:
+
+target/
+
+.mvn/
+
+build/
+
+*.jar
+
+*.war
+
+===================================================================
+
+JavaScript / Nuxt.js (in /www/news-website/)
+
+===================================================================
+
+Dependencies
+
+/www/news-website/node_modules/
+
+Build cache and output
+
+/www/news-website/.nuxt/
+/www/news-website/.output/
+/www/news-website/dist/
+
+Local data (e.g., the contents.sqlite file)
+
+/www/news-website/.data/
+
+Package manager logs
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+===================================================================
+
+Python (in /WSTN/ and /www/)
+
+===================================================================
+
+Compiled bytecode
+
+pycache/
+*.pyc
+
+Virtual Environments
+
+This will ignore 'venv', '.venv', etc.
+
+venv/
+.venv/
+
+===================================================================
+
+Go (in /www/weather-backend/)
+
+===================================================================
+
+Ignore the compiled binary (the 'backend' file)
+
+/www/weather-backend/backend
+
+===================================================================
+
+Arduino (in /arduino_firmware/)
+
+===================================================================
+
+Ignore Arduino build output folders and files
+
+/arduino_firmware/build/
+/arduino_firmware/.build/
+*.elf
+*.hex
