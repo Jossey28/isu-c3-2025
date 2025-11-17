@@ -15,10 +15,23 @@ POST_URL = "http://www.team2.isucdc.com:8080/weather"
 #Change this to the address of your NEWS box
 API_URL = "http://news.team2.isucdc.com:8080/weather"
 
+SAFE_BUILTINS = {
+    "builtins": {"bytes", "bytearray", "str", "tuple", "list", "dict", "int", "float"}
+}
+
+class SafeUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module in SAFE_BUILTINS and name in SAFE_BUILTINS[module]:
+            return super().find_class(module, name)
+        raise pickle.UnpicklingError(f"Deserialization attempt rejected: {module}.{name}")
+
+def safe_loads(s):
+    return SafeUnpickler(io.BytesIO(s)).load()
+
 def on_message(client, userdata, msg):
     print(f"Received message on topic {msg.topic}")
     try:
-        raw_bytes = pickle.loads(msg.payload)
+        raw_bytes = safe_loads(msg.payload)
         print(f"Raw bytes: {raw_bytes}")
 
         hex_str = raw_bytes.hex()

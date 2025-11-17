@@ -79,10 +79,10 @@ func main() {
 		airQuality := int(bytesData[6])
 		flag := string(bytesData[7:])
 
-		query := fmt.Sprintf(`INSERT INTO weather (temperature, humidity, wind_speed, air_quality, flag)
-    VALUES (%d, %d, %d, %d, '%s')`, temperature, humidity, windSpeed, airQuality, flag)
+		stmt := `INSERT INTO weather (temperature, humidity, wind_speed, air_quality, flag)
+          VALUES (?, ?, ?, ?, ?)`
 
-		_, err = db.Exec(query)
+		_, err = db.Exec(stmt, temperature, humidity, windSpeed, airQuality, flag)
 		if err != nil {
 			http.Error(w, "DB insert failed", http.StatusInternalServerError)
 			return
