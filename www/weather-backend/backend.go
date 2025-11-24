@@ -13,8 +13,8 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-const API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
-const DATABASE_URL = os.Getenv("DATABASE_URL")
+var API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
+var DATABASE_URL = os.Getenv("DATABASE_URL")
 
 type WeatherEntry struct {
 	ID          int    `json:"id"`

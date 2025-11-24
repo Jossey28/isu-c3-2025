@@ -26,5 +26,8 @@
     "vue-router": "^4.6.3",
     "vue3-carousel": "^0.16.0",
     "yarn": "^1.22.22"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3"
   }
 }
