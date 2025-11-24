@@ -15,11 +15,10 @@ export default defineNuxtConfig({
 	],
 	css: ["~/assets/css/main.css"],
 	runtimeConfig: {
-		public: {
-			apiKeyFlag: process.env.NUXT_API_KEY_FLAG,
-			livestreamAddress: process.env.NUXT_LIVESTREAM_ADDRESS,
-			databasePassword: process.env.NUXT_DATABASE_PASSWORD,
-			databaseUser: process.env.NUXT_DATABASE_USER,
-		},
+		// private runtime config (available only server-side)
+		databasePassword: process.env.NUXT_DATABASE_PASSWORD,
+		databaseUser: process.env.NUXT_DATABASE_USER,
+		apiKeyFlag: process.env.NUXT_API_KEY_FLAG,
+		livestreamAddress: process.env.NUXT_LIVESTREAM_ADDRESS,
 	},
 });
