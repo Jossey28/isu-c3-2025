@@ -18,6 +18,8 @@ export default defineNuxtConfig({
 		public: {
 			apiKeyFlag: process.env.NUXT_API_KEY_FLAG,
 			livestreamAddress: process.env.NUXT_LIVESTREAM_ADDRESS,
+			databasePassword: process.env.NUXT_DATABASE_PASSWORD,
+			databaseUser: process.env.NUXT_DATABASE_USER,
 		},
 	},
 });

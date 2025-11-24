@@ -105,3 +105,5 @@ Ignore Arduino build output folders and files
 /arduino_firmware/.build/
 *.elf
 *.hex
+# Snyk Security Extension - AI Rules (auto-generated)
+.github/instructions/snyk_rules.instructions.md
