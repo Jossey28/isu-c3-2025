@@ -3,14 +3,21 @@ import { pool } from "../db";
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event);
 
-	let sql = "SELECT * FROM articles";
+	if (!query.id && !query.category) {
+	throw createError({
+	  statusCode: 400,
+	  statusMessage: "Invalid query parameters provided",
+	});
+  }
+
+	let sql = "";
 	const params: any[] = [];
 
 	if (query.id) {
-		sql += " WHERE id = ?";
+		sql += "SELECT * FROM articles WHERE id = ?";
 		params.push(query.id);
 	} else if (query.category) {
-		sql += " WHERE category = ?";
+		sql += "SELECT * FROM articles WHERE category = ?";
 		params.push(query.category);
 	}
 

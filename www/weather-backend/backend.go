@@ -14,6 +14,7 @@ import (
 )
 
 const API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
+const DATABASE_URL = os.Getenv("DATABASE_URL")
 
 type WeatherEntry struct {
 	ID          int    `json:"id"`
@@ -30,7 +31,7 @@ func validateAPIKey(r *http.Request) bool {
 }
 
 func main() {
-	db, err := sql.Open("mysql", "weather_user:cdc@tcp(localhost:3306)/weather_station")
+	db, err := sql.Open("mysql", DATABASE_URL)
 	if err != nil {
 		log.Fatal(err)
 	}
