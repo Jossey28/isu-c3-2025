@@ -7,23 +7,15 @@ dotenv.config();
 // Node v22's undici doesn't respect env vars by default - must use ProxyAgent
 const proxyUrl = "http://199.100.16.100:3128";
 
-console.log("=== Proxy Configuration (undici ProxyAgent) ===");
-console.log("Proxy URL:", proxyUrl);
-
 try {
 	const proxyAgent = new ProxyAgent(proxyUrl);
 	setGlobalDispatcher(proxyAgent);
-	console.log("✅ Global dispatcher set to ProxyAgent");
 } catch (error) {
-	console.error("❌ Failed to set ProxyAgent:", error.message);
-	console.log("Falling back to environment variables...");
 	process.env.HTTPS_PROXY = proxyUrl;
 	process.env.https_proxy = proxyUrl;
 	process.env.HTTP_PROXY = proxyUrl;
 	process.env.http_proxy = proxyUrl;
 }
-
-console.log("===========================================\n");
 
 export default defineNuxtConfig({
 	compatibilityDate: "2025-07-15",
@@ -42,6 +34,8 @@ export default defineNuxtConfig({
 		databasePassword: process.env.NUXT_DATABASE_PASSWORD,
 		databaseUser: process.env.NUXT_DATABASE_USER,
 		apiKeyFlag: process.env.NUXT_API_KEY_FLAG,
+		public: {
 		livestreamAddress: process.env.NUXT_LIVESTREAM_ADDRESS,
+		},
 	},
 });
