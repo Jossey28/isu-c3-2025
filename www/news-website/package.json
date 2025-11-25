@@ -32,6 +32,6 @@
     "yarn": "^1.22.22",
     "@iconify/vue": "^5.0.0",
     "@iconify-json/icomoon-free": "^1.0.0",
-    "@iconify-json/weathericons": "^1.0.0"
+    "@iconify-json/wi": "^1.2.0"
   }
 }
