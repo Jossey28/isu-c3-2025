@@ -19,12 +19,8 @@ public class BroadcastController {
    }
 
    @GetMapping(value = "/news/live", produces = "video/mp4")
-   public ResponseEntity<Resource> streamLiveNews(@RequestParam String file) throws Exception {
-      Resource resource = this.resourceLoader.getResource("classpath:" + file);
-      if (!resource.exists()) {
-         resource = this.resourceLoader.getResource("file:./" + file);
-      }
-
+   public ResponseEntity<Resource> streamLiveNews() throws Exception {
+      Resource resource = this.resourceLoader.getResource("classpath:static/news.mp4");
       return !resource.exists() ? ResponseEntity.notFound().build() : ResponseEntity.ok().contentType(MediaType.valueOf("video/mp4")).body(resource);
    }
 }
