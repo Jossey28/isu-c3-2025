@@ -1,0 +1,17 @@
+uuid = 80dd5ec8-c7eb-11f0-a088-bc24119e9e0a
+name = 
+tool_name = mariadb-backup
+tool_command = --backup --user=root --target-dir=db_backup/
+tool_version = 10.11.14-MariaDB
+ibbackup_version = 10.11.14-MariaDB
+server_version = 10.11.14-MariaDB-0+deb12u2
+start_time = 2025-11-22 15:37:48
+end_time = 2025-11-22 15:37:54
+lock_time = 0
+binlog_pos = 
+innodb_from_lsn = 0
+innodb_to_lsn = 120626
+partial = N
+incremental = N
+format = file
+compressed = N
