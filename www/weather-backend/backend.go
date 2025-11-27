@@ -69,8 +69,8 @@ func main() {
 			return
 		}
 
-		if len(bytesData) < 6 {
-			http.Error(w, "Not enough data", http.StatusBadRequest)
+		if len(bytesData) < 8 {
+			http.Error(w, "Invalid data", http.StatusBadRequest)
 			return
 		}
 

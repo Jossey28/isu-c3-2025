@@ -1,0 +1,30 @@
+Fellow cybernaut, welcome to WWW. This box contains the news
+website and peripheral software to support the news website. 
+
+The biggest chunk is in news-website. This is a Nuxt application (a framework
+built on Vue, a better React alternative). If you change something in this codebase,
+in the /news-website directory run "yarn run build", and then restart the service 
+by running sudo systemctl daemon-reload and sudo systemctl restart news-website.
+Speaking of service...
+
+IMPORTANT: You will have to run sudo vi /etc/systemd/system/news-website.service
+and fill in the Environment variables with the correct values and the .env file in 
+the news-website directory
+
+The Nuxt app in news-website contains frontend code in app/ and backend code in 
+server/
+
+While there are some backend routes written in typescript as part of the Nuxt app,
+there is also a small standalone backend app written in Go under weather-backend. This 
+backend handles uploading and getting weather data (this is what receives the data from
+the mqtt_subscriber script on the WSTN box). Note that the GET endpoint MUST check 
+for the api key flag, but the POST endpoint does not have this requirement. The point of
+this flag is to test if you are able to modify the website code to avoid leaking 
+api keys to clients.
+
+
+If you end up modifying the Go weather backend, then in weather-backend, run 
+go build -o backend and follow similar steps outlined before to restart the
+weather-backend.service
+
+There is of also a mysql database running on this machine used by the website
