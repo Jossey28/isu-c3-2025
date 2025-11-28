@@ -96,6 +96,7 @@ def validate_weather_data(raw_bytes):
     if not isinstance(raw_bytes, (bytes, bytearray)):
         logger.warning(f"SECURITY: Invalid data type received: {type(raw_bytes)}")
         return False
+    # Minimum 8 bytes required to access indices 0-7 (team, reserved, temp, humidity, wind, aq, flag start)
     if len(raw_bytes) < 8:
         logger.warning(f"SECURITY: Data too short: {len(raw_bytes)} bytes (minimum 8 required)")
         return False

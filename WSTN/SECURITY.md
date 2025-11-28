@@ -108,25 +108,19 @@ Consider adding rate limiting to prevent DoS attacks via message flooding.
 
 ## Testing Security
 
-To test the SafeUnpickler protection:
+To verify that the SafeUnpickler protection is working correctly, you can send a test message
+that contains a non-whitelisted type. The SafeUnpickler will block any class that is not in
+the strict whitelist of allowed types (only `bytes` and `bytearray`).
 
-```python
-import pickle
-import io
+When an attacker attempts to send a malicious payload (e.g., using Python's `__reduce__` method
+to execute arbitrary code), the SafeUnpickler will intercept the class lookup and reject it.
 
-class Malicious:
-    def __reduce__(self):
-        import os
-        return (os.system, ('echo PWNED',))
-
-# This will be blocked by SafeUnpickler
-malicious_data = pickle.dumps(Malicious())
-```
-
-The subscriber will log:
+The subscriber will log blocked attempts:
 ```
 SECURITY: Blocked pickle deserialization of posix.system
 ```
+
+Monitor your logs for these messages to detect potential attack attempts.
 
 ## Best Practices
 
