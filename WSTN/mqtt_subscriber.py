@@ -172,7 +172,7 @@ def on_message(client, userdata, msg):
 
             logger.debug(f"Sending API to {API_URL}...")
             try:
-                resp = requests.post(API_URL, json=java_payload, timeout=2, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0"})
+                resp = requests.post(API_URL, json=java_payload, timeout=2, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0", "content-type": "application/json"} )
                 logger.info(f"API Response: {resp.status_code}")
             except Exception as e:
                 logger.error(f"API Failed: {e}")
