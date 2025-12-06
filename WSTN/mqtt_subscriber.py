@@ -1,35 +1,38 @@
 import os
 import pickle
 import io
-
-
+import logging
+import sys
 import paho.mqtt.client as mqtt
 import requests
 
-#Can leave this as 127.0.0.1 for now
-#but you will need to change it come comp day
-#(address TBD)
+# --- 1. CONFIGURATION ---
 MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
-
-#Change this to match your team number
 MQTT_TOPIC = "TEAM_2/weather_data"
-#Change this to the address of your WWW box
-POST_URL = os.getenv("POST_URL", "http://localhost:8000/post")
-#Change this to the address of your NEWS box
-API_URL = os.getenv("API_URL", "http://localhost:8001/api")
 
-# LoRa 5-layer PSK values and packet expectations (mirrors transmitter)
-TEAM_NUMBER = 0x28  # sample packets use 0x28 as the team byte
+POST_URL = os.getenv("POST_URL")
+API_URL = os.getenv("API_URL")
+
+# --- 2. LOGGING SETUP (MAXIMUM VERBOSITY) ---
+# Configure Python's standard logging to show everything (DEBUG level)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt='%H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+# --- 3. LORA / DECRYPTION CONFIG ---
+TEAM_NUMBER = 0x2
 PSK1 = b"SkibidiLoRa_NoCapFR_ISEAGE_Sigma"
 PSK2 = b"Team0x28NoMid_Bussin_C3_2025_420"
 PSK3 = b"Gyatt_WeatherStation_OnGod_PSK3_"
 PSK4 = b"RizzEncrypt_Layer4_Fanum_Tax_Yeet"
 PSK5 = b"IonlyFW_Ligma_PSK5_Vibes_Lowkey_L"
-PAYLOAD_LEN = 12  # bytes 3-14 (encrypted section)
-PACKET_LEN = 17
 
-# Track last valid sequence to reject replays
+PAYLOAD_LEN = 14  # 14 bytes (4 sensor + 10 flag)
+PACKET_LEN = 17   # 1 byte Team + 2 byte Seq + 14 byte Data
 last_sequence_seen = -1
 
 SAFE_BUILTINS = {
@@ -45,96 +48,154 @@ class SafeUnpickler(pickle.Unpickler):
 def safe_loads(s):
     return SafeUnpickler(io.BytesIO(s)).load()
 
-
-def _compute_tags(encrypted: bytes, seq: int) -> tuple[int, int]:
-    seq_high = (seq >> 8) & 0xFF
-    seq_low = seq & 0xFF
-    tag0 = TEAM_NUMBER ^ seq_high ^ seq_low
-    tag1 = 0
-    for i, byte in enumerate(encrypted):
-        tag0 ^= byte
-        tag1 ^= PSK1[i % 32] ^ PSK2[i % 32] ^ PSK3[i % 32] ^ PSK4[i % 32] ^ PSK5[i % 32]
-    return tag0 & 0xFF, tag1 & 0xFF
-
-
+# --- 4. DECRYPTION LOGIC ---
 def decrypt_packet(packet_bytes: bytes) -> tuple[int, bytes]:
+    logger.debug(f"Starting decryption on {len(packet_bytes)} bytes")
+    
     if len(packet_bytes) < PACKET_LEN:
-        raise ValueError(f"Packet too short: {len(packet_bytes)} bytes")
+        logger.error(f"Packet too short: {len(packet_bytes)} bytes")
+        raise ValueError(f"Packet too short")
+    
     if packet_bytes[0] != TEAM_NUMBER:
-        raise ValueError(f"Unexpected team number: {packet_bytes[0]:#x}")
+        logger.error(f"Team mismatch: Got {packet_bytes[0]:#x}, Expected {TEAM_NUMBER:#x}")
+        raise ValueError(f"Unexpected team number")
 
+    # Extract Sequence
     seq = (packet_bytes[1] << 8) | packet_bytes[2]
-    encrypted = packet_bytes[3:15]
-    tag_expected = packet_bytes[15], packet_bytes[16]
-    tag_calc = _compute_tags(encrypted, seq)
-    if tag_calc != tag_expected:
-        raise ValueError("Integrity tag mismatch; rejecting packet")
+    logger.debug(f"Extracted Sequence Number: {seq}")
+
+    # Extract Encrypted Payload
+    encrypted = packet_bytes[3:17]
+    logger.debug(f"Encrypted payload segment (hex): {encrypted.hex()}")
 
     seq_high = (seq >> 8) & 0xFF
     seq_low = seq & 0xFF
     plaintext = bytearray(PAYLOAD_LEN)
+
     for i in range(PAYLOAD_LEN):
         ks1 = PSK1[i % 32] ^ seq_high ^ PSK1[(i + 1) % 32]
         ks2 = PSK2[i % 32] ^ seq_low ^ PSK2[(i + 3) % 32]
         ks3 = PSK3[i % 32] ^ seq_high ^ PSK3[(i + 5) % 32]
         ks4 = PSK4[i % 32] ^ seq_low ^ PSK4[(i + 7) % 32]
         ks5 = PSK5[i % 32] ^ seq_high ^ PSK5[(i + 11) % 32]
-        plaintext[i] = encrypted[i] ^ ks1 ^ ks2 ^ ks3 ^ ks4 ^ ks5
+        
+        keystream_byte = ks1 ^ ks2 ^ ks3 ^ ks4 ^ ks5
+        plaintext[i] = encrypted[i] ^ keystream_byte
+        
+        # Super verbose per-byte log (optional, can be noisy)
+        # logger.debug(f"Byte {i}: Enc={encrypted[i]:02x} Key={keystream_byte:02x} Plain={plaintext[i]:02x}")
 
     return seq, bytes(plaintext)
 
-def on_message(client, userdata, msg):
-    print(f"Received message on topic {msg.topic}")
-    try:
-        raw_bytes = safe_loads(msg.payload)
-        packet = bytes(raw_bytes)
-        print(f"Raw bytes: {packet.hex()}")
+# --- 5. MQTT CALLBACKS ---
 
+def on_connect(client, userdata, flags, rc):
+    """Called when the broker responds to our connection request."""
+    if rc == 0:
+        logger.info(f"Connected to MQTT Broker! (Result Code: {rc})")
+        logger.info(f"Subscribing to topic: {MQTT_TOPIC}")
+        client.subscribe(MQTT_TOPIC)
+    else:
+        logger.error(f"Failed to connect. Result Code: {rc}")
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    """Called when the broker confirms our subscription."""
+    logger.info(f"Subscription Confirmed! (Message ID: {mid}, QoS: {granted_qos})")
+
+def on_log(client, userdata, level, buf):
+    """Catches internal Paho MQTT log messages."""
+    # This prints protocol level stuff like PINGREQ, PINGRESP, SEND, RECV
+    print(f"[PAHO-LOG] {buf}")
+
+def on_message(client, userdata, msg):
+    logger.info(f"MSG RECEIVED | Topic: {msg.topic} | Payload Size: {len(msg.payload)}")
+    
+    try:
+        # Attempt pickle decode
+        try:
+            raw_bytes = safe_loads(msg.payload)
+            packet = bytes(raw_bytes)
+            logger.info(f"Unpickled Bytes: {packet.hex()}")
+        except Exception as e:
+            logger.error(f"Pickle error: {e}. Trying raw payload as bytes...")
+            packet = msg.payload
+
+        # Attempt Decrypt
         seq, plaintext = decrypt_packet(packet)
 
+        # Replay Check
         global last_sequence_seen
         if seq <= last_sequence_seen:
-            raise ValueError(f"Replay detected (seq {seq} <= {last_sequence_seen})")
+             # Soft warning for testing loop
+             if last_sequence_seen > 65000 and seq < 100:
+                 logger.warning("Sequence rollover detected (Safe to ignore if testing)")
+             else:
+                 logger.warning(f"REPLAY DETECTED: Seq {seq} <= Last {last_sequence_seen}")
+                 # raise ValueError("Replay detected") # Uncomment to enforce strictness
+        
         last_sequence_seen = seq
-
         hex_str = plaintext.hex()
-        print(f"Decrypted payload (seq {seq}): {hex_str}")
 
+        # Parse Data
+        flag_bytes = plaintext[4:]
+        try:
+            flag_str = flag_bytes.decode('utf-8')
+        except:
+            flag_str = "<binary_garbage>"
+
+        logger.info(f"DECRYPTION SUCCESS | Seq: {seq}")
+        logger.info(f" > Hex Payload: {hex_str}")
+        logger.info(f" > Flag Found:  {flag_str}")
+        
+        # Prepare API Payloads
         payload = {"hex": hex_str, "seq": seq}
-        print(f"Payload to send: {payload}")
-        # Optionally forward to endpoints when running live via MQTT
+        api_data = {
+            "temp": plaintext[0],
+            "humidity": plaintext[1],
+            "windSpeed": plaintext[2],
+            "airQuality": plaintext[3],
+            "flag": flag_str
+        }
+
+        # Send to Backend
         if client is not None:
-            response = requests.post(POST_URL, data=payload)
-            print(f"POST response: {response.status_code}")
+            logger.debug(f"Sending POST to {POST_URL}...")
+            try:
+                resp = requests.post(POST_URL, data=payload, timeout=2)
+                logger.info(f"POST Response: {resp.status_code}")
+            except Exception as e:
+                logger.error(f"POST Failed: {e}")
 
-            api_data = {
-                "temp": plaintext[2],
-                "humidity": plaintext[3],
-                "windSpeed": plaintext[4],
-                "airQuality": plaintext[5],
-            }
-            response = requests.post(API_URL, json=api_data)
-            print(f"API response: {response.status_code}")
+            logger.debug(f"Sending API to {API_URL}...")
+            try:
+                resp = requests.post(API_URL, json=api_data, timeout=2)
+                logger.info(f"API Response: {resp.status_code}")
+            except Exception as e:
+                logger.error(f"API Failed: {e}")
+
     except Exception as e:
-        print("Failed to process payload:", e)
+        logger.exception("CRITICAL FAILURE processing message")
 
-client = mqtt.Client()
-messages = {1: "2800011c651144356d4c3c584f15406f57", 2: "2800021c654c363c715c0c1e6b51120257", 3: "2800031c656e693365673c4d6b0c7a0857", 4: "010001", 5: "2800011c656d4b261b149f2a9ba54d9157"}
-
+# --- 6. MAIN EXECUTION ---
 if __name__ == "__main__":
-    # Decrypt the three sample packets using the existing on_message logic
-    class DummyMsg:
-        def __init__(self, topic: str, payload: bytes):
-            self.topic = topic
-            self.payload = payload
+    client = mqtt.Client()
+    
+    # Enable internal client logging (pipes to on_log)
+    client.enable_logger(logger)
+    
+    # Attach Callbacks
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.on_subscribe = on_subscribe
+    client.on_log = on_log  # <--- This is the key for maximum verbosity
 
-    for seq_num, hex_pkt in messages.items():
-        print("\n--- Decrypting sample seq", seq_num, "---")
-        pickled_payload = pickle.dumps(bytes.fromhex(hex_pkt))
-        on_message(None, None, DummyMsg(MQTT_TOPIC, pickled_payload))
-
-    # Uncomment to run as MQTT subscriber instead of offline samples
-    # client.on_message = on_message
-    # client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    # client.subscribe(MQTT_TOPIC)
-    # client.loop_forever()
+    logger.info(f"Connecting to broker {MQTT_BROKER}:{MQTT_PORT}...")
+    
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.loop_forever()
+    except ConnectionRefusedError:
+        logger.critical("Could not connect to MQTT Broker! Is it running?")
+    except KeyboardInterrupt:
+        logger.info("Stopping subscriber...")
+        client.disconnect()
