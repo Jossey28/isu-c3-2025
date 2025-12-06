@@ -10,7 +10,7 @@
                      fileName="./logs/news_api.log"
                      filePattern="./logs/$${date:yyyy-MM}/news_api-%d{-dd-MMMM-yyyy}-%i.log.gz">
             <PatternLayout>
-                <pattern>%d %p %C{1} [%t] [IP:%X{clientIp}] %m%n</pattern>
+                <pattern>%d{ISO8601} %-5level [%t] %C{1}.%M.%L [IP:%X{clientIp}] %msg%n%throwable</pattern>
             </PatternLayout>
             <Policies>
                 <OnStartupTriggeringPolicy />
@@ -22,7 +22,15 @@
     </Appenders>
 
     <Loggers>
-        <Root level="info">
+        <Logger name="cdc4.newsapi" level="debug" additivity="false">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="RollingFile" />
+        </Logger>
+
+        <Logger name="org.springframework" level="info"/>
+        <Logger name="org.hibernate" level="warn"/>
+
+        <Root level="debug">
             <AppenderRef ref="Console" />
             <AppenderRef ref="RollingFile" />
         </Root>
