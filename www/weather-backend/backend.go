@@ -65,12 +65,12 @@ func main() {
 
 		bytesData, err := hex.DecodeString(rawHex)
 		if err != nil {
-			http.Error(w, "Invalid hex", http.StatusBadRequest)
+			http.Error(w, "Invalid data", http.StatusBadRequest)
 			return
 		}
 
-		if len(bytesData) < 6 {
-			http.Error(w, "Not enough data", http.StatusBadRequest)
+		if len(bytesData) < 8 {
+			http.Error(w, "Invalid data", http.StatusBadRequest)
 			return
 		}
 

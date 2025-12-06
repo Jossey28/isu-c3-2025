@@ -1,13 +1,40 @@
-===================================================================
+# --- Maven Build System ---
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+# (Optional) If you don't want to commit the wrapper jar
+#.mvn/wrapper/maven-wrapper.jar
 
-General
+# --- Java Class Files ---
+*.class
 
-===================================================================
+# --- Logs ---
+*.log
+logs/
 
-Ignore Operating System generated files
+# --- IDE Settings (Eclipse/IntelliJ/VS Code) ---
+# It is best practice to ignore these so you don't force your
+# editor settings onto other developers.
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
 
+# --- OS System Files ---
 .DS_Store
 Thumbs.db
+<<<<<<< HEAD
+=======
 
 Ignore environment variables & secrets
 
@@ -107,3 +134,4 @@ Ignore Arduino build output folders and files
 *.hex
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
+>>>>>>> f94619c20c72c8c0b87d2cb68b7689553aab9b72

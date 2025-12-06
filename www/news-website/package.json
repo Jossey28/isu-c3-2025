@@ -13,7 +13,9 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "dotenv": "^17.2.3",
+    "@iconify-json/icomoon-free": "^1.0.0",
+    "@iconify-json/wi": "^1.2.0",
+    "@iconify/vue": "^5.0.0",
     "@nuxt/content": "3.6.3",
     "@nuxt/eslint": "1.9.0",
     "@nuxt/image": "1.11.0",
@@ -21,6 +23,7 @@
     "@nuxt/ui": "^3.3.7",
     "@unhead/vue": "^2.0.19",
     "better-sqlite3": "^12.4.6",
+    "dotenv": "^17.2.3",
     "eslint": "^9.39.1",
     "mysql2": "^3.15.3",
     "nuxt": "^4.2.1",
@@ -29,9 +32,6 @@
     "vue": "^3.5.24",
     "vue-router": "^4.6.3",
     "vue3-carousel": "^0.16.0",
-    "yarn": "^1.22.22",
-    "@iconify/vue": "^5.0.0",
-    "@iconify-json/icomoon-free": "^1.0.0",
-    "@iconify-json/wi": "^1.2.0"
+    "yarn": "^1.22.22"
   }
 }
