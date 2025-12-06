@@ -18,7 +18,7 @@ BASE_TOPIC = "TEAM_{}/weather_data"
 #NOTE: You will need to change the first byte i.e the first "28"
 #to match your team number if you set your team number in the subscriber script.
 #Remember this is hex so 28 in hex equals 40 in decimal thus this is for team 40
-RAW_HEX = "28 01 02 3A 2F 10 52 75 4A 55 53 6F 64 41 6E 59 70"  # Example
+RAW_HEX = "02 01 02 3A 2F 10 52 75 4A 55 53 6F 64 41 6E 59 70"  # Example
 #      |Team#|res  |t| h | w| a| flag                        |
 # res=reserved bytes, t=temperature, h=humidity, w=wind speed, a=air quality
 

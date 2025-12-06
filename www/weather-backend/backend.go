@@ -16,6 +16,13 @@ import (
 var API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
 var DATABASE_URL = os.Getenv("DATABASE_URL")
 
+// --- 1. DEFINE PSKS (Must match Transmitter) ---
+var PSK1 = []byte("SkibidiLoRa_NoCapFR_ISEAGE_Sigma")
+var PSK2 = []byte("Team0x28NoMid_Bussin_C3_2025_420")
+var PSK3 = []byte("Gyatt_WeatherStation_OnGod_PSK3_")
+var PSK4 = []byte("RizzEncrypt_Layer4_Fanum_Tax_Yeet")
+var PSK5 = []byte("IonlyFW_Ligma_PSK5_Vibes_Lowkey_L")
+
 type WeatherEntry struct {
 	ID          int    `json:"id"`
 	CreatedAt   string `json:"created_at"`
@@ -28,6 +35,40 @@ type WeatherEntry struct {
 
 func validateAPIKey(r *http.Request) bool {
 	return r.Header.Get("X-Api-Key-Flag") == API_KEY_FLAG
+}
+
+func validateUserAgent(r *http.Request) bool {
+	return r.Header.Get("User-Agent") == "WSTN-MQTT-Subscriber/1.0"
+}
+
+func decryptPayload(packet []byte) ([]byte, error) {
+	if len(packet) != 17 {
+		return nil, fmt.Errorf("invalid packet length")
+	}
+
+	// Extract Sequence (Bytes 1-2)
+	seq := (uint16(packet[1]) << 8) | uint16(packet[2])
+
+	// Extract Encrypted Payload (Bytes 3-16)
+	encrypted := packet[3:]
+	plaintext := make([]byte, 14)
+
+	seqHigh := uint8((seq >> 8) & 0xff)
+	seqLow := uint8(seq & 0xff)
+
+	for i := 0; i < 14; i++ {
+		// Apply 5-layer keystream logic
+		ks1 := PSK1[i%32] ^ seqHigh ^ PSK1[(i+1)%32]
+		ks2 := PSK2[i%32] ^ seqLow ^ PSK2[(i+3)%32]
+		ks3 := PSK3[i%32] ^ seqHigh ^ PSK3[(i+5)%32]
+		ks4 := PSK4[i%32] ^ seqLow ^ PSK4[(i+7)%32]
+		ks5 := PSK5[i%32] ^ seqHigh ^ PSK5[(i+11)%32]
+
+		keystream := ks1 ^ ks2 ^ ks3 ^ ks4 ^ ks5
+		plaintext[i] = encrypted[i] ^ keystream
+	}
+
+	return plaintext, nil
 }
 
 func main() {
@@ -57,20 +98,36 @@ func main() {
 			return
 		}
 
+		if !validateAPIKey(r) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !validateUserAgent(r) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		rawHex := r.FormValue("hex")
 		if rawHex == "" {
 			http.Error(w, "No data provided", http.StatusBadRequest)
 			return
 		}
 
-		bytesData, err := hex.DecodeString(rawHex)
-		if err != nil {
+		packetData, err := hex.DecodeString(rawHex)
+		if err != nil || len(packetData) != 17 {
+			http.Error(w, "Invalid raw data", http.StatusBadRequest)
+			return
+		}
+
+		if packetData[0] != 0x02 {
 			http.Error(w, "Invalid data", http.StatusBadRequest)
 			return
 		}
 
-		if len(bytesData) < 8 {
-			http.Error(w, "Invalid data", http.StatusBadRequest)
+		bytesData, err := decryptPayload(packetData)
+		if err != nil {
+			http.Error(w, "Decryption failed", http.StatusInternalServerError)
 			return
 		}
 
@@ -85,6 +142,7 @@ func main() {
 
 		_, err = db.Exec(stmt, temperature, humidity, windSpeed, airQuality, flag)
 		if err != nil {
+			log.Printf("DB Error: %v", err)
 			http.Error(w, "DB insert failed", http.StatusInternalServerError)
 			return
 		}
