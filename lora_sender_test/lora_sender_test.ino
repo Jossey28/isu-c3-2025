@@ -90,48 +90,40 @@ std::array<uint8_t, BUFFER_SIZE> generatePayloadBytes(uint8_t reserved[2]) {
 /********************************* [COMPETITOR CODE] *********************************************/
 
 void manipulateOutgoingPayloadData() {
-    static const uint8_t PSK1[32] = "SkibidiLoRa_NoCapFR_ISEAGE_Sigma";
-    static const uint8_t PSK2[32] = "Team0x28NoMid_Bussin_C3_2025_420";
-    static const uint8_t PSK3[32] = "Gyatt_WeatherStation_OnGod_PSK3_";
-    static const uint8_t PSK4[32] = "RizzEncrypt_Layer4_Fanum_Tax_Yeet";
-    static const uint8_t PSK5[32] = "IonlyFW_Ligma_PSK5_Vibes_Lowkey_L";
+    // 1. Define Keys
+    static const uint8_t PSK1[] = "SkibidiLoRa_NoCapFR_ISEAGE_Sigma";
+    static const uint8_t PSK2[] = "Team0x28NoMid_Bussin_C3_2025_420";
+    static const uint8_t PSK3[] = "Gyatt_WeatherStation_OnGod_PSK3_";
+    static const uint8_t PSK4[] = "RizzEncrypt_Layer4_Fanum_Tax_Yeet";
+    static const uint8_t PSK5[] = "IonlyFW_Ligma_PSK5_Vibes_Lowkey_L";
 
-    // Global sequence number
+    // 2. Manage Sequence Number
     static uint16_t packetSequenceNumber = 0;
-
-    uint8_t reserved[2] = {0x01, 0x02};
-    std::array<uint8_t, BUFFER_SIZE> payloadBytes = generatePayloadBytes(reserved);
-
-    /*
-    Decrypted packet format (17 bytes total):
-    TEAM_NUMBER
-    reserved[0] = 01
-    reserved[1] = 02
-    temp = 0x45 or 69
-    humidity = 0x3e or 62
-    wind speed = 0x0b or 11
-    air quality = 0x73 or 115
-    flag = 0x70 4a 66 72 44 45 56 4b 68 31 or pJfrDEVKh1
-    */
-
-    // Secure packet format (17 bytes total):
-    // Byte 0:     TEAM_NUMBER (unchanged)
-    // Bytes 1-2:  Sequence number (big-endian, 16-bit) - prevents replay
-    // Bytes 3-14: XOR-encrypted payload (12 bytes) - confidentiality with 5-layer PSK
-    // Bytes 15-16: Integrity tag (2 bytes) - detects tampering
-
     packetSequenceNumber++;
 
-    // Extract plaintext payload (12 bytes)
-    uint8_t plaintext[12];
-    for (int i = 0; i < 12; i++) {
-        plaintext[i] = payloadBytes[i + 1];
+    // 3. Generate Data
+    // We pass the reserved bytes, but we will overwrite them in the packet
+    // because we need that space for the Sequence Number.
+    uint8_t reserved[2] = {0x01, 0x02}; 
+    std::array<uint8_t, BUFFER_SIZE> payloadBytes = generatePayloadBytes(reserved);
+
+    /* PAYLOAD MAPPING (17 Bytes Total):
+       Index 0:      Team ID (Fixed)
+       Index 1-2:    Sequence Number (Overwrites 'Reserved' bytes)
+       Index 3-6:    Sensor Data (Temp, Hum, Wind, AQ)
+       Index 7-16:   Flag (10 Bytes) - FULLY PRESERVED
+    */
+
+    // 4. Prepare Plaintext (14 Bytes: Sensors + Flag)
+    // We grab bytes 3 through 16 from the generated payload.
+    uint8_t plaintext[14];
+    for (int i = 0; i < 14; i++) {
+        plaintext[i] = payloadBytes[i + 3]; // +3 skips unused[0] and reserved[1,2]
     }
 
-    // Apply 5-layer XOR encryption with sequence-derived keystreams
-    uint8_t encrypted[12];
-    for (int i = 0; i < 12; i++) {
-        // Derive 5 keystream bytes (one from each PSK layer) based on sequence number
+    // 5. Encrypt (14 Bytes)
+    uint8_t encrypted[14];
+    for (int i = 0; i < 14; i++) {
         uint8_t seq_high = (packetSequenceNumber >> 8) & 0xff;
         uint8_t seq_low = packetSequenceNumber & 0xff;
 
@@ -141,50 +133,20 @@ void manipulateOutgoingPayloadData() {
         uint8_t ks4 = PSK4[i % 32] ^ seq_low ^ PSK4[(i + 7) % 32];
         uint8_t ks5 = PSK5[i % 32] ^ seq_high ^ PSK5[(i + 11) % 32];
 
-        // XOR plaintext with all 5 keystream layers
         encrypted[i] = plaintext[i] ^ ks1 ^ ks2 ^ ks3 ^ ks4 ^ ks5;
     }
 
-    // Build secure packet
-    txpacket[0] = TEAM_NUMBER;  // Preserve team identifier
-    txpacket[1] = (packetSequenceNumber >> 8) & 0xff;  // Sequence (high byte)
-    txpacket[2] = packetSequenceNumber & 0xff;         // Sequence (low byte)
+    // 6. Pack the Global 'txpacket'
+    txpacket[0] = TEAM_NUMBER;                      // Byte 0
+    txpacket[1] = (packetSequenceNumber >> 8) & 0xff; // Byte 1 (Seq High)
+    txpacket[2] = packetSequenceNumber & 0xff;        // Byte 2 (Seq Low)
 
-    // Copy encrypted payload
-    for (int i = 0; i < 12; i++) {
-        txpacket[3 + i] = encrypted[i];
+    for (int i = 0; i < 14; i++) {
+        txpacket[3 + i] = encrypted[i];             // Bytes 3-16 (Encrypted Data)
     }
 
-    // Compute integrity tag by XOR-mixing across all 5 PSKs, sequence, and ciphertext
-    uint8_t tag_byte_0 = TEAM_NUMBER ^ txpacket[1] ^ txpacket[2];
-    uint8_t tag_byte_1 = 0;
-
-    for (int i = 0; i < 12; i++) {
-        tag_byte_0 ^= encrypted[i];
-        tag_byte_1 ^= (PSK1[i % 32] ^ PSK2[i % 32] ^ PSK3[i % 32] ^ PSK4[i % 32] ^ PSK5[i % 32]);
-    }
-
-    txpacket[15] = tag_byte_0;
-    txpacket[16] = tag_byte_1;
-
-    //
-    // BACKEND DECRYPTION (e.g., mqtt_subscriber.py or weather-backend):
-    // 1. Extract seq (bytes 1-2), encrypted (bytes 3-14), tag (bytes 15-16)
-    // 2. Recompute tag and verify against bytes 15-16 (reject on mismatch = tampering)
-    // 3. Check seq: reject if seq <= last_seen_seq[device_id] (replay protection)
-    // 4. Update last_seen_seq[device_id] = seq
-    // 5. Decrypt by XOR with 5-layer keystreams:
-    //    - for i in 0..11:
-    //        seq_high = (seq >> 8) & 0xff
-    //        seq_low = seq & 0xff
-    //        ks1 = PSK1[i%32] ^ seq_high ^ PSK1[(i+1)%32]
-    //        ks2 = PSK2[i%32] ^ seq_low ^ PSK2[(i+3)%32]
-    //        ks3 = PSK3[i%32] ^ seq_high ^ PSK3[(i+5)%32]
-    //        ks4 = PSK4[i%32] ^ seq_low ^ PSK4[(i+7)%32]
-    //        ks5 = PSK5[i%32] ^ seq_high ^ PSK5[(i+11)%32]
-    //        plaintext[i] = encrypted[i] ^ ks1 ^ ks2 ^ ks3 ^ ks4 ^ ks5
-    // 6. Restore and save plaintext payload to DB
-    //
+    // Note: Integrity Tag (Bytes 15-16 in previous version) was removed 
+    // to make room for the full Flag.
 }
 
 int oledLine = 1; 

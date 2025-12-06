@@ -3,6 +3,13 @@ import { pool } from "../db";
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event);
 
+	if (event.node.req.method !== "GET") {
+		throw createError({
+			statusCode: 405,
+			statusMessage: "Method not allowed",
+		});
+	}
+
 	if (!query.id && !query.category) {
 	throw createError({
 	  statusCode: 400,
