@@ -20,9 +20,9 @@ var DATABASE_URL = os.Getenv("DATABASE_URL")
 
 // Structured loggers
 var (
-	infoLog    *log.Logger
-	warningLog *log.Logger
-	errorLog   *log.Logger
+	infoLog     *log.Logger
+	warningLog  *log.Logger
+	errorLog    *log.Logger
 	securityLog *log.Logger
 )
 
@@ -96,18 +96,27 @@ func decryptPayload(packet []byte) ([]byte, error) {
 }
 
 func main() {
-	// Initialize structured logging
-	infoLog = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime)
-	warningLog = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime)
-	errorLog = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
-	securityLog = log.New(os.Stdout, "SECURITY: ", log.Ldate|log.Ltime)
-
-	// Open log file for security events
-	logFile, err := os.OpenFile("security.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err == nil {
-		securityLog.SetOutput(io.MultiWriter(os.Stdout, logFile))
-		defer logFile.Close()
+	// Open main log file for all logs
+	allLogsFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal("Failed to open app.log: ", err)
 	}
+	defer allLogsFile.Close()
+
+	// Open security log file
+	securityLogFile, err := os.OpenFile("security.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal("Failed to open security.log: ", err)
+	}
+	defer securityLogFile.Close()
+
+	// Initialize structured logging - all write to app.log only (no console output)
+	infoLog = log.New(allLogsFile, "INFO: ", log.Ldate|log.Ltime)
+	warningLog = log.New(allLogsFile, "WARNING: ", log.Ldate|log.Ltime)
+	errorLog = log.New(allLogsFile, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// Security logs go to both app.log and security.log
+	securityLog = log.New(io.MultiWriter(allLogsFile, securityLogFile), "SECURITY: ", log.Ldate|log.Ltime)
 
 	db, err := sql.Open("mysql", DATABASE_URL)
 	if err != nil {

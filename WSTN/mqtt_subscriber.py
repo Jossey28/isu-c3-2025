@@ -149,7 +149,8 @@ def on_message(client, userdata, msg):
         logger.info(f" > Flag Found:  {flag_str}")
         
         # Prepare API Payloads
-        payload = {"hex": packet.hex(), "seq": seq}
+        go_payload = {"hex": packet.hex(), "seq": seq}
+        java_payload = {"hex": packet.hex()}
         # api_data = {
         #     "temp": plaintext[0],
         #     "humidity": plaintext[1],
@@ -162,7 +163,7 @@ def on_message(client, userdata, msg):
         if client is not None:
             logger.debug(f"Sending POST to {POST_URL}...")
             try:
-                resp = requests.post(POST_URL, data=payload, timeout=2, verify=False, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0", "X-Api-Key-Flag": os.getenv("API_KEY_FLAG")})
+                resp = requests.post(POST_URL, data=go_payload, timeout=2, verify=False, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0", "X-Api-Key-Flag": os.getenv("API_KEY_FLAG")})
                 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
                 logger.info(f"POST Response: {resp.status_code}")
@@ -171,7 +172,7 @@ def on_message(client, userdata, msg):
 
             logger.debug(f"Sending API to {API_URL}...")
             try:
-                resp = requests.post(API_URL, json=payload, timeout=2, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0"})
+                resp = requests.post(API_URL, json=java_payload, timeout=2, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0"})
                 logger.info(f"API Response: {resp.status_code}")
             except Exception as e:
                 logger.error(f"API Failed: {e}")
