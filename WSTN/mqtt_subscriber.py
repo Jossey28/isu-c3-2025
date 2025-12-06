@@ -12,8 +12,8 @@ MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
 MQTT_TOPIC = "TEAM_2/weather_data"
 
-POST_URL = os.getenv("POST_URL")
-API_URL = os.getenv("API_URL")
+POST_URL = str(os.getenv("POST_URL"))
+API_URL = str(os.getenv("API_URL"))
 
 # --- 2. LOGGING SETUP (MAXIMUM VERBOSITY) ---
 # Configure Python's standard logging to show everything (DEBUG level)
@@ -150,13 +150,13 @@ def on_message(client, userdata, msg):
         
         # Prepare API Payloads
         payload = {"hex": packet.hex(), "seq": seq}
-        api_data = {
-            "temp": plaintext[0],
-            "humidity": plaintext[1],
-            "windSpeed": plaintext[2],
-            "airQuality": plaintext[3],
-            "flag": flag_str
-        }
+        # api_data = {
+        #     "temp": plaintext[0],
+        #     "humidity": plaintext[1],
+        #     "windSpeed": plaintext[2],
+        #     "airQuality": plaintext[3],
+        #     "flag": flag_str
+        # }
 
         # Send to Backend
         if client is not None:
@@ -171,7 +171,7 @@ def on_message(client, userdata, msg):
 
             logger.debug(f"Sending API to {API_URL}...")
             try:
-                resp = requests.post(API_URL, json=api_data, timeout=2)
+                resp = requests.post(API_URL, json=payload, timeout=2, headers={"User-Agent": "WSTN-MQTT-Subscriber/1.0"})
                 logger.info(f"API Response: {resp.status_code}")
             except Exception as e:
                 logger.error(f"API Failed: {e}")

@@ -37,8 +37,12 @@ func validateAPIKey(r *http.Request) bool {
 	return r.Header.Get("X-Api-Key-Flag") == API_KEY_FLAG
 }
 
-func validateUserAgent(r *http.Request) bool {
+func validateUserAgentPost(r *http.Request) bool {
 	return r.Header.Get("User-Agent") == "WSTN-MQTT-Subscriber/1.0"
+}
+
+func validateUserAgentGet(r *http.Request) bool {
+	return r.Header.Get("User-Agent") == "WWW-NEWS-Website/1.0"
 }
 
 func decryptPayload(packet []byte) ([]byte, error) {
@@ -98,12 +102,12 @@ func main() {
 			return
 		}
 
-		if !validateAPIKey(r) {
+		if !validateUserAgentPost(r) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if !validateUserAgent(r) {
+		if !validateAPIKey(r) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -131,11 +135,11 @@ func main() {
 			return
 		}
 
-		temperature := int(bytesData[3])
-		humidity := int(bytesData[4])
-		windSpeed := int(bytesData[5])
-		airQuality := int(bytesData[6])
-		flag := string(bytesData[7:])
+		temperature := int(bytesData[0]) // Index 0
+		humidity := int(bytesData[1])    // Index 1
+		windSpeed := int(bytesData[2])   // Index 2
+		airQuality := int(bytesData[3])  // Index 3
+		flag := string(bytesData[4:])    // Index 4 to end
 
 		stmt := `INSERT INTO weather (temperature, humidity, wind_speed, air_quality, flag)
           VALUES (?, ?, ?, ?, ?)`
@@ -152,9 +156,15 @@ func main() {
 	})
 
 	http.HandleFunc("/weather/latest", func(w http.ResponseWriter, r *http.Request) {
+
+		if !validateUserAgentGet(r) {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		// Validate API key
 		if !validateAPIKey(r) {
-			http.Error(w, "Unauthorized: Invalid API Key", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
