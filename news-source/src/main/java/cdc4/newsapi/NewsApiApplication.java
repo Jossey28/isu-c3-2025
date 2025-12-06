@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 @SpringBootApplication
 public class NewsApiApplication {
 
-   private static final Logger logger = LoggerFactory.getLogger(NewsApiApplication.class)
+   private static final Logger logger = LoggerFactory.getLogger(NewsApiApplication.class);
 
    public static void main(String[] args) {
       SpringApplication.run(NewsApiApplication.class, args);
