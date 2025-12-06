@@ -15,6 +15,7 @@ public class CustomErrorController implements ErrorController {
     @GetMapping("/error")
     public String handleError(HttpServletRequest request) {
         String clientIp = getClientIp(request);
+        MDC.put("clientIp", clientIp)
         System.out.println("You shouldn't be here; an error has occurred.");
         return "redirect:/broadcast/news/live";
     }

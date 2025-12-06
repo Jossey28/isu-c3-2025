@@ -10,7 +10,7 @@
                      fileName="./logs/news_api.log"
                      filePattern="./logs/$${date:yyyy-MM}/news_api-%d{-dd-MMMM-yyyy}-%i.log.gz">
             <PatternLayout>
-                <pattern>%d %p %C{1} [%t] %m%n</pattern>
+                <pattern>%d %p %C{1} [%t] [IP:%X{clientIp}] %m%n</pattern>
             </PatternLayout>
             <Policies>
                 <OnStartupTriggeringPolicy />
