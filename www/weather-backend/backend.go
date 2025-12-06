@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/joho/godotenv/autoload"
@@ -15,6 +17,14 @@ import (
 
 var API_KEY_FLAG = os.Getenv("API_KEY_FLAG")
 var DATABASE_URL = os.Getenv("DATABASE_URL")
+
+// Structured loggers
+var (
+	infoLog    *log.Logger
+	warningLog *log.Logger
+	errorLog   *log.Logger
+	securityLog *log.Logger
+)
 
 // --- 1. DEFINE PSKS (Must match Transmitter) ---
 var PSK1 = []byte("SkibidiLoRa_NoCapFR_ISEAGE_Sigma")
@@ -31,6 +41,16 @@ type WeatherEntry struct {
 	WindSpeed   int    `json:"wind_speed"`
 	AirQuality  int    `json:"air_quality"`
 	Flag        string `json:"flag"`
+}
+
+func logRequest(logger *log.Logger, r *http.Request, msg string) {
+	logger.Printf("[%s] %s %s | RemoteAddr=%s | UserAgent=%s | %s",
+		time.Now().Format(time.RFC3339),
+		r.Method,
+		r.URL.Path,
+		r.RemoteAddr,
+		r.UserAgent(),
+		msg)
 }
 
 func validateAPIKey(r *http.Request) bool {
@@ -76,9 +96,22 @@ func decryptPayload(packet []byte) ([]byte, error) {
 }
 
 func main() {
+	// Initialize structured logging
+	infoLog = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime)
+	warningLog = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime)
+	errorLog = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	securityLog = log.New(os.Stdout, "SECURITY: ", log.Ldate|log.Ltime)
+
+	// Open log file for security events
+	logFile, err := os.OpenFile("security.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		securityLog.SetOutput(io.MultiWriter(os.Stdout, logFile))
+		defer logFile.Close()
+	}
+
 	db, err := sql.Open("mysql", DATABASE_URL)
 	if err != nil {
-		log.Fatal(err)
+		errorLog.Fatal(err)
 	}
 	defer db.Close()
 
@@ -98,40 +131,47 @@ func main() {
 	http.HandleFunc("/weather", func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+			logRequest(warningLog, r, "Method not allowed")
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
 		if !validateUserAgentPost(r) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			logRequest(securityLog, r, "Invalid User-Agent for POST")
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		if !validateAPIKey(r) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			logRequest(securityLog, r, "Invalid API key")
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		rawHex := r.FormValue("hex")
 		if rawHex == "" {
-			http.Error(w, "No data provided", http.StatusBadRequest)
+			logRequest(warningLog, r, "Missing hex parameter")
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
 		packetData, err := hex.DecodeString(rawHex)
 		if err != nil || len(packetData) != 17 {
-			http.Error(w, "Invalid raw data", http.StatusBadRequest)
+			logRequest(warningLog, r, fmt.Sprintf("Invalid hex data: err=%v, len=%d", err, len(packetData)))
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
 		if packetData[0] != 0x02 {
-			http.Error(w, "Invalid data", http.StatusBadRequest)
+			logRequest(warningLog, r, fmt.Sprintf("Invalid packet header: 0x%02x", packetData[0]))
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 
 		bytesData, err := decryptPayload(packetData)
 		if err != nil {
-			http.Error(w, "Decryption failed", http.StatusInternalServerError)
+			errorLog.Printf("Decryption failed for %s: %v", r.RemoteAddr, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -146,25 +186,28 @@ func main() {
 
 		_, err = db.Exec(stmt, temperature, humidity, windSpeed, airQuality, flag)
 		if err != nil {
-			log.Printf("DB Error: %v", err)
-			http.Error(w, "DB insert failed", http.StatusInternalServerError)
+			errorLog.Printf("Database insert failed for %s: %v", r.RemoteAddr, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, "Data saved! Temp=%d Humidity=%d Wind=%d AQ=%d Flag=%s",
-			temperature, humidity, windSpeed, airQuality, flag)
+		infoLog.Printf("Data saved from %s: Temp=%d Humidity=%d Wind=%d AQ=%d",
+			r.RemoteAddr, temperature, humidity, windSpeed, airQuality)
+		fmt.Fprintf(w, "OK")
 	})
 
 	http.HandleFunc("/weather/latest", func(w http.ResponseWriter, r *http.Request) {
 
 		if !validateUserAgentGet(r) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			logRequest(securityLog, r, "Invalid User-Agent for GET")
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		// Validate API key
 		if !validateAPIKey(r) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			logRequest(securityLog, r, "Invalid API key")
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
@@ -175,8 +218,8 @@ func main() {
 		err := row.Scan(&entry.ID, &entry.CreatedAt, &entry.Temperature,
 			&entry.Humidity, &entry.WindSpeed, &entry.AirQuality, &entry.Flag)
 		if err != nil {
-			log.Printf("Query error: %v\n", err)
-			http.Error(w, "DB query failed", http.StatusInternalServerError)
+			errorLog.Printf("Database query failed for %s: %v", r.RemoteAddr, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -184,6 +227,8 @@ func main() {
 		json.NewEncoder(w).Encode(entry)
 	})
 
-	fmt.Println("Server running on https://localhost:8080")
-	log.Fatal(http.ListenAndServeTLS(":8080", "server.crt", "server.key", nil))
+	infoLog.Println("Starting weather backend server on https://localhost:8080")
+	if err := http.ListenAndServeTLS(":8080", "server.crt", "server.key", nil); err != nil {
+		errorLog.Fatal("Server failed to start: ", err)
+	}
 }
