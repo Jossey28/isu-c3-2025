@@ -119,7 +119,7 @@ def on_message(client, userdata, msg):
         print("Failed to process payload:", e)
 
 client = mqtt.Client()
-messages = {1: "2800011c656d4b261b149f2a9ba54d9957", 2: "2800021c65125730b2478e9ef155274057", 3: "2800031c6563352030e0f03d31bc7ace57", 4: "010001", 5: "2800011c656d4b261b149f2a9ba54d9157"}
+messages = {1: "2800011c651144356d4c3c584f15406f57", 2: "2800021c654c363c715c0c1e6b51120257", 3: "2800031c656e693365673c4d6b0c7a0857", 4: "010001", 5: "2800011c656d4b261b149f2a9ba54d9157"}
 
 if __name__ == "__main__":
     # Decrypt the three sample packets using the existing on_message logic

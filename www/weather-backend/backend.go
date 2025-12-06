@@ -65,7 +65,7 @@ func main() {
 
 		bytesData, err := hex.DecodeString(rawHex)
 		if err != nil {
-			http.Error(w, "Invalid hex", http.StatusBadRequest)
+			http.Error(w, "Invalid data", http.StatusBadRequest)
 			return
 		}
 
