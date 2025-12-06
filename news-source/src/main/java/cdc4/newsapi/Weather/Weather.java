@@ -7,97 +7,94 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Immutable;
 
 @Entity
-@Immutable
 public class Weather {
-   @Id
-   @GeneratedValue(strategy = GenerationType.IDENTITY)
-   private int id;
-   private double temp;
-   private double humidity;
-   private double airPressure;
-   private double windSpeed;
-   private double uvIndex;
-   private double precipitation;
-   @CreationTimestamp
-   @Column(updatable = false, nullable = false)
-   private LocalDateTime created;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
 
-   public Weather(double temp, double humidity, double airPressure, double windSpeed, double uvIndex, double precipitation) {
-      this.temp = temp;
-      this.humidity = humidity;
-      this.airPressure = airPressure;
-      this.windSpeed = windSpeed;
-      this.uvIndex = uvIndex;
-      this.precipitation = precipitation;
-   }
+    // Changed from 'temp' to 'temperature' to match Controller
+    // Changed from double to int to match LoRa payload
+    private int temperature;
+    private int humidity;
+    private int windSpeed;
+    
+    // Added missing fields required by Controller
+    private int airQuality;
+    private String flag;
 
-   public int getId() {
-      return this.id;
-   }
+    @CreationTimestamp
+    @Column(updatable = false, nullable = false)
+    private LocalDateTime created;
 
-   public double getTemp() {
-      return this.temp;
-   }
+    // --- Constructors ---
+    public Weather() {
+    }
 
-   public double getHumidity() {
-      return this.humidity;
-   }
+    public Weather(int temperature, int humidity, int windSpeed, int airQuality, String flag) {
+        this.temperature = temperature;
+        this.humidity = humidity;
+        this.windSpeed = windSpeed;
+        this.airQuality = airQuality;
+        this.flag = flag;
+    }
 
-   public double getAirPressure() {
-      return this.airPressure;
-   }
+    // --- Getters and Setters ---
 
-   public double getWindSpeed() {
-      return this.windSpeed;
-   }
+    public int getId() {
+        return this.id;
+    }
 
-   public double getUvIndex() {
-      return this.uvIndex;
-   }
+    public void setId(final int id) {
+        this.id = id;
+    }
 
-   public double getPrecipitation() {
-      return this.precipitation;
-   }
+    public int getTemperature() {
+        return this.temperature;
+    }
 
-   public LocalDateTime getCreated() {
-      return this.created;
-   }
+    public void setTemperature(final int temperature) {
+        this.temperature = temperature;
+    }
 
-   public void setId(final int id) {
-      this.id = id;
-   }
+    public int getHumidity() {
+        return this.humidity;
+    }
 
-   public void setTemp(final double temp) {
-      this.temp = temp;
-   }
+    public void setHumidity(final int humidity) {
+        this.humidity = humidity;
+    }
 
-   public void setHumidity(final double humidity) {
-      this.humidity = humidity;
-   }
+    public int getWindSpeed() {
+        return this.windSpeed;
+    }
 
-   public void setAirPressure(final double airPressure) {
-      this.airPressure = airPressure;
-   }
+    public void setWindSpeed(final int windSpeed) {
+        this.windSpeed = windSpeed;
+    }
 
-   public void setWindSpeed(final double windSpeed) {
-      this.windSpeed = windSpeed;
-   }
+    public int getAirQuality() {
+        return this.airQuality;
+    }
 
-   public void setUvIndex(final double uvIndex) {
-      this.uvIndex = uvIndex;
-   }
+    public void setAirQuality(final int airQuality) {
+        this.airQuality = airQuality;
+    }
 
-   public void setPrecipitation(final double precipitation) {
-      this.precipitation = precipitation;
-   }
+    public String getFlag() {
+        return this.flag;
+    }
 
-   public void setCreated(final LocalDateTime created) {
-      this.created = created;
-   }
+    public void setFlag(final String flag) {
+        this.flag = flag;
+    }
 
-   public Weather() {
-   }
+    public LocalDateTime getCreated() {
+        return this.created;
+    }
+
+    public void setCreated(final LocalDateTime created) {
+        this.created = created;
+    }
 }
