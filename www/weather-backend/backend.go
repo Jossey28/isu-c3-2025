@@ -174,6 +174,6 @@ func main() {
 		json.NewEncoder(w).Encode(entry)
 	})
 
-	fmt.Println("Server running on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("Server running on https://localhost:8080")
+	log.Fatal(http.ListenAndServeTLS(":8080", "server.crt", "server.key", nil))
 }
