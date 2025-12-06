@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import pickle
 import io
 import logging
@@ -8,6 +9,8 @@ import requests
 import urllib3
 
 # --- 1. CONFIGURATION ---
+load_dotenv()
+
 MQTT_BROKER = "127.0.0.1"
 MQTT_PORT = 1883
 MQTT_TOPIC = "TEAM_2/weather_data"
