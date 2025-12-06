@@ -3,9 +3,10 @@ package cdc4.newsapi;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 @Controller
 public class CustomErrorController implements ErrorController {
@@ -15,7 +16,7 @@ public class CustomErrorController implements ErrorController {
     @GetMapping("/error")
     public String handleError(HttpServletRequest request) {
         String clientIp = getClientIp(request);
-        MDC.put("clientIp", clientIp)
+        MDC.put("clientIp", clientIp);
         System.out.println("You shouldn't be here; an error has occurred.");
         return "redirect:/broadcast/news/live";
     }
@@ -26,6 +27,5 @@ public class CustomErrorController implements ErrorController {
             ip = request.getRemoteAddr();
         }
         return ip;
-        }
     }
 }
